@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>赵吉帅 206231334 Week1 报告</title>
+<style>
+@page { size: A4; margin: 2.5cm 2cm; }
+body { font-family: "SimSun", "宋体", serif; font-size: 12pt; line-height: 1.8; color: #000; }
+h1 { font-family: "SimHei", "黑体", sans-serif; font-size: 18pt; text-align: center; margin-top: 60px; }
+h2 { font-family: "SimHei", "黑体", sans-serif; font-size: 15pt; border-bottom: 2px solid #000; padding-bottom: 4px; margin-top: 30px; }
+h3 { font-family: "SimHei", "黑体", sans-serif; font-size: 13pt; margin-top: 20px; }
+.cover { text-align: center; margin-top: 120px; }
+.cover h1 { font-size: 22pt; border: none; }
+.cover-info { margin-top: 80px; font-size: 14pt; line-height: 2.5; text-align: left; display: inline-block; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 11pt; }
+th, td { border: 1px solid #000; padding: 6px 10px; text-align: center; }
+th { background: #f0f0f0; font-family: "SimHei", sans-serif; }
+.figure { text-align: center; margin: 15px 0; }
+.figure img { max-width: 95%; }
+.figure-caption { font-size: 11pt; margin-top: 5px; }
+.formula { text-align: center; margin: 10px 0; font-style: italic; }
+.page-break { page-break-after: always; }
+.highlight { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<!-- 封面 -->
+<div class="cover">
+<h1>南京工程学院 课程设计报告</h1>
+<div class="cover-info">
+课程名称：<span style="border-bottom: 1px solid #000; padding: 0 80px;">储能优化规划与运行课程设计</span><br>
+班级名称：储能231<br>
+学生姓名：赵吉帅<br>
+学生学号：206231334<br>
+任课教师：吴涵<br>
+报告成绩：<br>
+评阅教师签字：<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日
+</div>
+<p style="margin-top:60px;">电力工程学院、沈国荣学院</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- 正文 -->
+<h1 style="margin-top:0;">第一周配电网潮流与储能日前调度报告</h1>
+<p style="text-align:center;">任务一至任务三</p>
+<p style="text-align:center;">姓名 赵吉帅&nbsp;&nbsp;学号 206231334</p>
+
+<h3>研究范围与个人参数</h3>
+<table>
+<tr><th>项目</th><th>本次设置</th></tr>
+<tr><td>任务范围</td><td>Week 1 任务一、任务二、任务三</td></tr>
+<tr><td>学号映射</td><td>X = 3，Y = 4，α = 1 + 0.002 × 34 = 1.068</td></tr>
+<tr><td>网络与基准</td><td>case_chengshi_A，49 节点/48 支路，12.66 kV / 100 MVA</td></tr>
+<tr><td>设备接入节点</td><td>5、11、16</td></tr>
+<tr><td>任务三目标</td><td>模型 B 全天有功网损最小</td></tr>
+<tr><td>时间离散</td><td>24 个时段，Δt = 1 h</td></tr>
+</table>
+
+<h2>1 任务一 配电网时序潮流诊断</h2>
+
+<h3>1.1 场景与计算方法</h3>
+<p>在节点 5、11、16 各接入 0.8 MW 光伏，不配置储能。每个时段从原始算例重新生成负荷，避免连续累乘；有功和无功负荷均乘以个人系数及典型日负荷曲线，光伏仅提供有功功率。调用 MATPOWER runpf 后检查 success，再记录节点电压与各支路有功损耗。</p>
+<div class="formula">P<sub>i,t</sub><sup>net</sup> = α P<sub>i,0</sub><sup>load</sup> λ<sub>t</sub><sup>load</sup> − 0.8 λ<sub>t</sub><sup>pv</sup>（光伏节点）</div>
+<div class="formula">Q<sub>i,t</sub><sup>net</sup> = α Q<sub>i,0</sub><sup>load</sup> λ<sub>t</sub><sup>load</sup>；E<sub>loss</sub> = Σ<sub>t</sub> P<sub>loss</sub>(t) Δt</div>
+
+<div class="figure">
+<img src="Fig_week1_Task1_206231334.png" alt="Task1">
+<div class="figure-caption">图1 任务一全网 24 时段电压分布（V<sub>min</sub>=0.9550 p.u. @ Bus 10, t=19h）</div>
+</div>
+
+<table>
+<tr><th>指标</th><th>结果</th><th>含义</th></tr>
+<tr><td>最低电压</td><td>0.9550 p.u.</td><td>距 0.95 下限 0.005 p.u.</td></tr>
+<tr><td>薄弱节点与时段</td><td>节点 10，第 19 时段</td><td>18:00—19:00 晚高峰</td></tr>
+<tr><td>全天网损电量</td><td>0.3575 MWh</td><td>24 时段有功损耗积分</td></tr>
+</table>
+<p>午间光伏注入使部分节点电压抬升，晚间光伏出力为零而负荷接近峰值，节点 10 电压降落最明显。基态最低电压尚未越限，但裕度较小。</p>
+
+<h3>1.2 负荷增加试验</h3>
+<p>将附加负荷倍率由 1.00 调整为 1.10，实际负荷系数由 1.068 增至 1.1748。</p>
+<table>
+<tr><th>指标</th><th>倍率 1.00</th><th>倍率 1.10</th></tr>
+<tr><td>实际负荷系数 α</td><td>1.0680</td><td>1.1748</td></tr>
+<tr><td>最低电压 / p.u.</td><td>0.9550</td><td>0.9502</td></tr>
+<tr><td>最低电压节点与时段</td><td>10 / 19</td><td>10 / 19</td></tr>
+<tr><td>全天网损电量 / MWh</td><td>0.3575</td><td>0.4050</td></tr>
+</table>
+<p>增加 10% 负荷后，最低电压下降约 0.0048 p.u.；全天网损增加约 0.0475 MWh，增幅约 13.3%。</p>
+
+<h3>1.3 时间与标幺值约定</h3>
+<p>第 t 时段表示 (t−1):00 至 t:00。系统阻抗基准为 12.66²/100 = 1.6028 Ω；case_chengshi_A 已在内部完成阻抗换算。网络优化中的功率再除以 100 MVA 基准容量。典型日光伏在第 12 时段达到峰值，负荷在第 19 时段达到峰值。</p>
+
+<h2>2 任务二 单节点储能分时电价套利</h2>
+
+<h3>2.1 参数与数学模型</h3>
+<p>储能额定功率 2 MW，额定能量 2 MWh，充电效率 0.90，放电效率 0.95。SoC 范围 0.10~1.00，初始与日末均为 0.50。不计网络潮流，按课程给定电价结算。</p>
+<div class="formula">max R = Σ<sub>t</sub> c<sub>t</sub> [P<sub>t</sub><sup>dis</sup> − P<sub>t</sub><sup>ch</sup>] Δt</div>
+<div class="formula">SoC<sub>t</sub> = SoC<sub>t−1</sub> + [η<sub>ch</sub> P<sub>t</sub><sup>ch</sup> − P<sub>t</sub><sup>dis</sup>/η<sub>dis</sub>] Δt / E<sup>rated</sup></div>
+
+<table>
+<tr><th>电价类型</th><th>时段编号</th><th>元/kWh</th></tr>
+<tr><td>低谷</td><td>1—8</td><td>0.3180</td></tr>
+<tr><td>平段</td><td>9—14、18、23—24</td><td>0.6715</td></tr>
+<tr><td>高峰</td><td>15—17、19—22</td><td>1.1248</td></tr>
+</table>
+
+<div class="figure">
+<img src="Fig_week1_Task2_206231334 .png" alt="Task2">
+<div class="figure-caption">图2 单节点储能充放电功率、电价和荷电状态（日净收益 1553.59 元）</div>
+</div>
+
+<h3>2.2 运行结果</h3>
+<table>
+<tr><th>模型</th><th>日收益 / 元</th><th>最大同时充放电 / MW</th></tr>
+<tr><td>MILP（互斥）</td><td>1553.59</td><td>0</td></tr>
+</table>
+<p>往返效率为 0.90 × 0.95 = 85.5%。在正电价、相同买卖电价且无网络约束条件下，同时充放电只增加损耗，LP 与 MILP 取得相同最优收益。谷段购入、峰段售出形成价差套利，平段也可充电后在峰段售出。</p>
+
+<h2>3 任务三 计及网络约束的日前调度</h2>
+
+<h3>3.1 场景参数与变量</h3>
+<p>节点 5、11、16 各配置 1.5 MW/3 MWh 储能，三站总额定功率 4.5 MW、总额定能量 9 MWh；各节点光伏容量 1.2 MW，允许弃光。充放电效率 0.90/0.95，SoC 范围 0.20~0.80，初末均为 0.50。节点电压约束 0.95~1.05 p.u.。</p>
+
+<h3>3.2 DistFlow 方程与二阶锥松弛</h3>
+<div class="formula">P<sub>ij,t</sub> − r<sub>ij</sub>L<sub>ij,t</sub> = P<sub>j,t</sub><sup>load</sup> − P<sub>j,t</sub><sup>pv</sup> + P<sub>j,t</sub><sup>ch</sup> − P<sub>j,t</sub><sup>dis</sup> + Σ<sub>k∈δ(j)</sub> P<sub>jk,t</sub></div>
+<div class="formula">U<sub>j,t</sub> = U<sub>i,t</sub> − 2(r<sub>ij</sub>P<sub>ij,t</sub> + x<sub>ij</sub>Q<sub>ij,t</sub>) + (r<sub>ij</sub>² + x<sub>ij</sub>²)L<sub>ij,t</sub></div>
+<div class="formula">P<sub>ij,t</sub>² + Q<sub>ij,t</sub>² ≤ U<sub>i,t</sub>L<sub>ij,t</sub></div>
+
+<h3>3.3 模型 B 目标与求解</h3>
+<div class="formula">min F<sub>B</sub> = E<sub>loss</sub> + 10<sup>−4</sup> Σ<sub>i,t</sub> [P<sub>i,t</sub><sup>ch</sup> + P<sub>i,t</sub><sup>dis</sup>]</div>
+<p>采用 MOSEK 求解 MISOCP，72 个整数变量、1152 个锥约束，约 68 s 完成，状态最优。</p>
+
+<div class="figure">
+<img src="Fig_Week1_Task3_206231334.png" alt="Task3">
+<div class="figure-caption">图3 模型 B 三站净放电功率和荷电状态时序</div>
+</div>
+
+<table>
+<tr><th>指标</th><th>结果</th></tr>
+<tr><td>模型全天网损电量</td><td>0.1735 MWh</td></tr>
+<tr><td>全天弃光电量</td><td>5.6816 MWh</td></tr>
+<tr><td>关口购电成本</td><td>21579.96 元</td></tr>
+<tr><td>交流节点电压范围</td><td>0.9694 ~ 1.0000 p.u.</td></tr>
+<tr><td>最大二阶锥松弛间隙</td><td>3.05×10<sup>−11</sup></td></tr>
+</table>
+
+<p>三站在凌晨及晚间主要放电，白天光伏较强时段充电，SoC 在清晨接近 20%、午后达到 80%、日末回到 50%。模型 B 通过调整储能和削减光伏取得最低网损，但购电费用较高。</p>
+
+<h3>3.4 松弛精确性与交流校核</h3>
+<p>将优化后的光伏和储能有功出力代入 MATPOWER 交流潮流回代，检查充放电互斥、二阶锥松弛间隙及模型与交流电压差异。</p>
+<table>
+<tr><th>检查项</th><th>结果</th><th>结论</th></tr>
+<tr><td>同时充放电最大重叠功率</td><td>0.00 MW</td><td>互斥成立</td></tr>
+<tr><td>最大二阶锥松弛间隙</td><td>3.05×10<sup>−11</sup></td><td>数值上接近等式</td></tr>
+<tr><td>交流最低/最高电压</td><td>0.9694 / 1.0000 p.u.</td><td>位于 0.95~1.05 范围内</td></tr>
+</table>
+
+<h2>4 综合分析与第一周结论</h2>
+
+<table>
+<tr><th>项目</th><th>任务一</th><th>任务三</th></tr>
+<tr><td>单节点光伏容量</td><td>0.8 MW</td><td>1.2 MW</td></tr>
+<tr><td>单节点储能配置</td><td>无</td><td>1.5 MW / 3 MWh</td></tr>
+<tr><td>光伏出力方式</td><td>按曲线全部注入</td><td>允许弃光并参与优化</td></tr>
+<tr><td>最低交流电压 / p.u.</td><td>0.9550</td><td>0.9694</td></tr>
+<tr><td>全天网损 / MWh</td><td>0.3575</td><td>0.1735</td></tr>
+</table>
+
+<p>第一周三个任务形成完整分析链条：任务一确定薄弱节点及高风险时段；任务二说明功率、容量、效率和终端 SoC 对套利的共同约束；任务三将储能运行放入配电网，协调支路潮流、电压与光伏出力。模型 B 原始结果通过了充放电互斥、松弛间隙和交流电压检查，同时暴露出较高弃光率这一目标取舍。</p>
+
+<p>本次分析采用确定性典型日曲线和固定设备容量。任务二收益不含储能折旧与运维，任务三未纳入无功调节及显式线路热限额；结论用于本课程设置下的运行策略比较，不外推为实际工程投资收益或全约束运行结论。</p>
+
+</body>
+</html>
