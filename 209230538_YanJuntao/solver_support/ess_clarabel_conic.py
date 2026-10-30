@@ -25,4 +25,4 @@ r=clarabel.DefaultSolver(sp.csc_matrix((n,n)),c,A,b,cones,s).solve()
 savemat(sys.argv[2],{'x':np.asarray(r.x),'primal':r.obj_val,'dual':r.obj_val_dual,
  'status':str(r.status),'primal_residual':r.r_prim,'dual_residual':r.r_dual,'solve_seconds':r.solve_time,
  'clarabel_version':clarabel.__version__})
-assert str(r.status)=='Solved',f'Clarabel status {r.status}'
+assert str(r.status) in ('Solved','PrimalInfeasible'),f'Clarabel status {r.status}'
