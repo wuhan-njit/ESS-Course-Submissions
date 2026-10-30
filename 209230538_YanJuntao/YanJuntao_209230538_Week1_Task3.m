@@ -282,3 +282,8 @@ result_summary.Task3_RerunDate='2026-10-30';
 save(fullfile(out_dir,'result_summary.mat'),'result_summary');
 writetable(Dispatch_Result,fullfile(out_dir,'Task3_C_Result.csv'));
 Lesson_Stats=Dispatch_Check;
+%% 同场景 A/B/C 数值比较
+% 保持网络、负荷、光伏与储能参数一致，分别求解 A、B，并与本节 C 结果比较。 输出弃光、全天网损、购电费用、交流潮流核验以及最优性上下界。
+
+Comparison=YanJuntao_209230538_Week1_ABCComparison();
+disp(Comparison(:,{'Objective','Curtailment_MWh','Loss_MWh','GridCost_Yuan'}));
