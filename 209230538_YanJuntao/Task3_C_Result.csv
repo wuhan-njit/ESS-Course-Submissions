@@ -1,0 +1,2 @@
+StudentID,Case,Objective,Solver,Curtailment_MWh,Loss_MWh,GridCost_Yuan,MaxConeGap,SimultaneousPower_MW,MinACVoltage,MaxACVoltage
+209230538,case_kaifaqu_A,C,Clarabel (bound certificate),-6.02826524911598e-12,0.739630721303392,22155.7309780675,1.37910192705808e-11,-5.90273666915648e-15,0.950000000183697,1.00509310713586
