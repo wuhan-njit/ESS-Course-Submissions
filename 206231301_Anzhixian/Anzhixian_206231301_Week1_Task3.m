@@ -1,56 +1,57 @@
-%% 第一周：计及配电网二阶锥潮流与充放电互斥约束 (MISOCP) 的储能日前优化调度
-% 课程名称：《储能优化配置与调度技术》课程设计 | 作者：张三（学号：242400000）
-
-%% 0. 任务说明与核心数学模型
-% *任务说明*：
-% 
-% 本脚本构建基于支路潮流（DistFlow）二阶锥松弛与储能充放电状态互斥约束的混合整数二阶锥规划（MISOCP）日前有功优化调度模型，调用 MOSEK（或 Gurobi）求解器求解，校验充放电互斥性、二阶锥松弛间隙，并通过 MATPOWER 交流潮流回代检验节点电压安全性。
-% 
+%% 第一周作业模板：计及配电网二阶锥潮流与充放电互斥约束 (MISOCP) 的储能日前优化调度
+% 课程名称：《储能优化配置与调度技术》课程设计
+%% 0. 模板使用说明与核心数学模型
+% *使用说明*：
+%% 
+% * 请将本模板复制到 |ESS-Course-Submissions| 仓库下你的 【学号_姓名拼音】 文件夹中；
+% * 重命名为 【姓名拼音_学号_Week1.mlx】，并修改第 2 节中的 |Stu_ID| 为本人真实 9 位学号；
+% * 仔细阅读各节的 LaTeX 数学模型说明，在标有 |% 【TODO】| 的代码块处补全核心建模语句，并导出对应的 |.m| 纯文本脚本一并提交。
+%% 
 % *核心数学模型*：
 % 
-% *1) 储能系统荷电状态（SoC）动态方程与充放电互斥约束*（已知单站额定功率 $P_i^{\mathrm{rated}}$、额定能量容量 $E_i^{\mathrm{rated}}$ 为常数，引入二进制互斥变量 $u_{i,t}^{\mathrm{ch}} \in \{0,1\}$）：
+% *1) 储能系统荷电状态（SoC）动态递推方程与充放电互斥约束*（已知单站额定功率 $P_i^{\mathrm{rated}}$、额定容量 $E_i^{\mathrm{rated}}$ 
+% 为常数，引入二进制互斥变量 $u_{i,t}^{\mathrm{ch}} \in \{0,1\}$）：
 % 
-% $$\mathrm{SoC}_{i,t} = \mathrm{SoC}_{i,t-1} + \frac{\eta_{\mathrm{ch}} P_{i,t}^{\mathrm{ch}} \Delta t}{E_i^{\mathrm{rated}}} - \frac{P_{i,t}^{\mathrm{dis}} \Delta t}{\eta_{\mathrm{dis}} E_i^{\mathrm{rated}}}, \quad \mathrm{SoC}_{\min} \le \mathrm{SoC}_{i,t} \le \mathrm{SoC}_{\max}$$
+% $$\mathrm{SoC}_{i,t} = \mathrm{SoC}_{i,t-1} + \frac{\eta_{\mathrm{ch}} P_{i,t}^{\mathrm{ch}} 
+% \Delta t}{E_i^{\mathrm{rated}}} - \frac{P_{i,t}^{\mathrm{dis}} \Delta t}{\eta_{\mathrm{dis}} 
+% E_i^{\mathrm{rated}}}, \quad \mathrm{SoC}_{\min} \le \mathrm{SoC}_{i,t} \le 
+% \mathrm{SoC}_{\max}$$
 % 
-% $$0 \le P_{i,t}^{\mathrm{ch}} \le u_{i,t}^{\mathrm{ch}} P_i^{\mathrm{rated}}, \quad 0 \le P_{i,t}^{\mathrm{dis}} \le \left(1 - u_{i,t}^{\mathrm{ch}}\right) P_i^{\mathrm{rated}}, \quad u_{i,t}^{\mathrm{ch}} \in \{0,1\}$$
+% $$0 \le P_{i,t}^{\mathrm{ch}} \le u_{i,t}^{\mathrm{ch}} P_i^{\mathrm{rated}}, 
+% \quad 0 \le P_{i,t}^{\mathrm{dis}} \le \left(1 - u_{i,t}^{\mathrm{ch}}\right) 
+% P_i^{\mathrm{rated}}, \quad u_{i,t}^{\mathrm{ch}} \in \{0,1\}$$
 % 
 % *2) 配电网 DistFlow 支路潮流与旋转二阶锥松弛方程*（令 $U_{i,t} = V_{i,t}^2, L_{ij,t} = I_{ij,t}^2$）：
 % 
-% $$P_{ij,t} - r_{ij} L_{ij,t} - \sum_{k\in\delta(j)} P_{jk,t} = P_{j,t}^{\mathrm{load}} - P_{j,t}^{\mathrm{pv}} + P_{j,t}^{\mathrm{ch}} - P_{j,t}^{\mathrm{dis}}$$
+% $$P_{ij,t} - r_{ij} L_{ij,t} - \sum_{k\in\delta(j)} P_{jk,t} = P_{j,t}^{\mathrm{load}} 
+% - P_{j,t}^{\mathrm{pv}} + P_{j,t}^{\mathrm{ch}} - P_{j,t}^{\mathrm{dis}}$$
 % 
 % $$Q_{ij,t} - x_{ij} L_{ij,t} - \sum_{k\in\delta(j)} Q_{jk,t} = Q_{j,t}^{\mathrm{load}}$$
 % 
-% $$U_{j,t} = U_{i,t} - 2\left(r_{ij} P_{ij,t} + x_{ij} Q_{ij,t}\right) + \left(r_{ij}^2 + x_{ij}^2\right) L_{ij,t}$$
+% $$U_{j,t} = U_{i,t} - 2\left(r_{ij} P_{ij,t} + x_{ij} Q_{ij,t}\right) + \left(r_{ij}^2 
+% + x_{ij}^2\right) L_{ij,t}$$
 % 
-% $$\sqrt{\left(2P_{ij,t}\right)^2 + \left(2Q_{ij,t}\right)^2 + \left(L_{ij,t} - U_{i,t}\right)^2} \le L_{ij,t} + U_{i,t}, \quad \left(V_{\min}\right)^2 \le U_{i,t} \le \left(V_{\max}\right)^2$$
+% $$\sqrt{\left(2P_{ij,t}\right)^2 + \left(2Q_{ij,t}\right)^2 + \left(L_{ij,t} 
+% - U_{i,t}\right)^2} \le L_{ij,t} + U_{i,t}, \quad \left(V_{\min}\right)^2 \le 
+% U_{i,t} \le \left(V_{\max}\right)^2$$
 
 clear; clc; close all;
 yalmip('clear');
+%----------------------------请修改地址------------------------------
+addpath("D:\Research\EnergyStorageCourse\ESS-Course-Materials\cases\")
+%-------------------------------------------------------------------
+%% 1. 自动检测算例库是否已在 MATLAB 搜索路径中
 
-%% 1. 自动检测并挂载教学资源库 cases 路径
-% 自动检测 |case_nongcun.m| 是否在搜索路径中，实现跨仓库无缝调用。
 if ~exist('case_nongcun.m', 'file')
-    rel_case_dir = fullfile(fileparts(mfilename('fullpath')), '..', '..', 'ESS-Course-Materials', 'cases');
-    if exist(rel_case_dir, 'dir')
-        addpath(rel_case_dir);
-    elseif exist(fullfile(pwd, 'ESS-Course-Materials', 'cases'), 'dir')
-        addpath(fullfile(pwd, 'ESS-Course-Materials', 'cases'));
-    else
-        case_dir = uigetdir(pwd, '请选择教学资源库中的 cases 文件夹路径');
-        if isequal(case_dir, 0)
-            error('未选择 cases 文件夹，程序终止。');
-        end
-        addpath(case_dir);
-    end
+    % 若不在路径中，弹窗提示学生选择一次本地的 ESS-Course-Materials/cases 文件夹
+    case_dir = uigetdir(pwd, '请选择教学资源库中的 cases 文件夹路径');
+    addpath(case_dir);
 end
+%% 2. 学号映射与网络参数读取
+% *【学生修改区】*：请将下方 |Stu_ID| 修改为你本人的 9 位学号！程序将根据末两位 $\mathrm{XY}$ 自动计算负荷缩放乘子 $\alpha 
+% = 1 + 0.002 \times \mathrm{XY}$ 并分配专属算例。
 
-%% 2. 学号哈希映射与配电网参数读取
-% 根据学号末两位 $\mathrm{XY}$ 确定负荷乘子 $\alpha = 1 + 0.002 \times \mathrm{XY}$、配电网算例（由末位 $Y$ 决定）以及调度目标类型与储能接入节点（由倒数第二位 $X$ 决定）：
-% 
-% * $X \in \{0,1,2\}$：模型 A（最大化新能源消纳，含微网损正则项 $+10^{-2} E_{\mathrm{loss}}$）
-% * $X \in \{3,4,5\}$：模型 B（最小化全网有功网损 $E_{\mathrm{loss}}$）
-% * $X \in \{6,7,8,9\}$：模型 C（最小化主网购电成本 $C_{\mathrm{grid}}$）
-Stu_ID  = 242400000;
+Stu_ID  = 206231301;
 XY      = mod(Stu_ID, 100);
 X_digit = floor(XY / 10);
 Y_digit = mod(XY, 10);
@@ -68,18 +69,17 @@ load('profiles_24h.mat');
 
 if ismember(X_digit, [0, 1, 2])
     ess_buses  = [4, 9, 14];
-    model_type = 'A';
+    model_type = 'A'; % 模型 A：最大化新能源消纳（含微网损正则项）
 elseif ismember(X_digit, [3, 4, 5])
     ess_buses  = [5, 11, 16];
-    model_type = 'B';
+    model_type = 'B'; % 模型 B：最小化全网有功网损
 else
     ess_buses  = [6, 13, 17];
-    model_type = 'C';
+    model_type = 'C'; % 模型 C：最小化主网购电成本
 end
 pv_buses = ess_buses;
+%% 3. 标幺值基准转换与设备参数设置
 
-%% 3. 标幺值基准转换与储能参数设置
-% 设系统基准功率为 $S_{\mathrm{base}} = 100\;\mathrm{MVA}$，单站固定储能额定功率 $P_i^{\mathrm{rated}} = 1.5\;\mathrm{MW}$，额定容量 $E_i^{\mathrm{rated}} = 3.0\;\mathrm{MWh}$，单节点分布式光伏峰值装机容量为 $1.2\;\mathrm{MW}$。
 Sbase = mpc.baseMVA;
 N_bus = size(mpc.bus, 1);
 N_br  = size(mpc.branch, 1);
@@ -95,29 +95,29 @@ Pd_pu       = (mpc.bus(:, 3) * alpha / Sbase) * load_curve_pu';
 Qd_pu       = (mpc.bus(:, 4) * alpha / Sbase) * load_curve_pu';
 P_pv_max_pu = (1.2 / Sbase) * repmat(pv_curve_pu', N_pv, 1);
 
-P_ess_rated_pu = 1.5 / Sbase; % 单站额定功率 1.5 MW (p.u.)
-E_ess_rated_pu = 3.0 / Sbase; % 单站额定容量 3.0 MWh (p.u.)
+P_ess_rated_pu = 1.5 / Sbase; % 单站固定额定功率 1.5 MW (标幺值)
+E_ess_rated_pu = 3.0 / Sbase; % 单站固定额定容量 3.0 MWh (标幺值)
 eta_ch  = 0.90;
 eta_dis = 0.95;
 SoC_min = 0.20;
 SoC_max = 0.80;
 SoC_0   = 0.50;
-
 %% 4. 声明 YALMIP 决策变量
-U_bus  = sdpvar(N_bus, T, 'full'); % 节点电压幅值平方 U_{i,t} = V_{i,t}^2 (p.u.^2)
-L_br   = sdpvar(N_br,  T, 'full'); % 支路电流幅值平方 L_{ij,t} = I_{ij,t}^2 (p.u.^2)
-P_br   = sdpvar(N_br,  T, 'full'); % 支路首端有功潮流 P_{ij,t} (p.u.)
-Q_br   = sdpvar(N_br,  T, 'full'); % 支路首端无功潮流 Q_{ij,t} (p.u.)
-P_grid = sdpvar(1,     T, 'full'); % 关口购电有功功率 P_{grid,t} (p.u.)
-Q_grid = sdpvar(1,     T, 'full'); % 关口无功功率 Q_{grid,t} (p.u.)
-P_ch   = sdpvar(N_ess, T, 'full'); % 储能充电有功功率 P_{i,t}^{ch} (p.u.)
-P_dis  = sdpvar(N_ess, T, 'full'); % 储能放电有功功率 P_{i,t}^{dis} (p.u.)
+
+U_bus  = sdpvar(N_bus, T, 'full'); % 节点电压平方 U_{i,t} = V_{i,t}^2
+L_br   = sdpvar(N_br,  T, 'full'); % 支路电流平方 L_{ij,t} = I_{ij,t}^2
+P_br   = sdpvar(N_br,  T, 'full'); % 支路首端有功功率 (p.u.)
+Q_br   = sdpvar(N_br,  T, 'full'); % 支路首端无功功率 (p.u.)
+P_grid = sdpvar(1,     T, 'full'); % 关口有功功率 (p.u.)
+Q_grid = sdpvar(1,     T, 'full'); % 关口无功功率 (p.u.)
+P_ch   = sdpvar(N_ess, T, 'full'); % 储能充电有功功率 (p.u.)
+P_dis  = sdpvar(N_ess, T, 'full'); % 储能放电有功功率 (p.u.)
 u_ch   = binvar(N_ess, T, 'full'); % 储能充放电互斥二进制变量 u_{i,t}^{ch} \in {0,1}
 SoC    = sdpvar(N_ess, T, 'full'); % 储能荷电状态 SoC_{i,t}
-P_pv   = sdpvar(N_pv,  T, 'full'); % 分布式光伏实际消纳出力 P_{i,t}^{pv} (p.u.)
+P_pv   = sdpvar(N_pv,  T, 'full'); % 分布式光伏实际出力 (p.u.)
+%% 5. 构建约束条件
+%% 5.1 储能充放电互斥与分布式光伏运行约束
 
-%% 5. 构建储能动态与 DistFlow 二阶锥潮流约束
-%%% 5.1 储能荷电状态（SoC）递推与充放电互斥边界约束
 Constraints = [];
 Constraints = [Constraints, 0 <= P_ch  <= P_ess_rated_pu * u_ch];
 Constraints = [Constraints, 0 <= P_dis <= P_ess_rated_pu * (1 - u_ch)];
@@ -131,12 +131,12 @@ for t = 1:T
     else
         soc_prev = SoC(:, t - 1);
     end
+    % 【TODO 1】请在此处补全储能荷电状态 SoC(:, t) 的跨时段耦合递推方程：
     Constraints = [Constraints, SoC(:, t) == soc_prev + ...
         (eta_ch * P_ch(:, t) - P_dis(:, t) / eta_dis) / E_ess_rated_pu];
 end
+%% 5.2 节点功率平衡与 DistFlow 二阶锥潮流约束
 
-%%% 5.2 节点有功/无功平衡、电压降落方程与二阶锥约束
-% 利用稀疏关联矩阵 $\mathbf{A}_{\mathrm{from}}, \mathbf{A}_{\mathrm{to}}$ 实现全网节点功率平衡方程的向量化构建，并对每条支路施加二阶锥松弛约束 $\|(2P_{ij,t}, 2Q_{ij,t}, L_{ij,t}-U_{i,t})^{\mathrm{T}}\|_2 \le L_{ij,t}+U_{i,t}$。
 A_from  = sparse(fbus, 1:N_br, 1, N_bus, N_br);
 A_to    = sparse(tbus, 1:N_br, 1, N_bus, N_br);
 A_ess   = sparse(ess_buses, 1:N_ess, 1, N_bus, N_ess);
@@ -158,6 +158,7 @@ Constraints = [Constraints, L_br >= 0];
 for b = 1:N_br
     i = fbus(b);
     j = tbus(b);
+    % 【TODO 2】请核对并掌握 DistFlow 支路电压平方降落方程与 cone 二阶锥松弛约束：
     Constraints = [Constraints, U_bus(j, :) == U_bus(i, :) - ...
         2 * (r_br(b) * P_br(b, :) + x_br(b) * Q_br(b, :)) + ...
         (r_br(b)^2 + x_br(b)^2) * L_br(b, :)];
@@ -166,13 +167,16 @@ for b = 1:N_br
             L_br(b, t) - U_bus(i, t)], L_br(b, t) + U_bus(i, t))];
     end
 end
-
 %% 6. 构建目标函数并调用 MISOCP 求解器 (MOSEK / Gurobi)
-% 本模型同时包含充放电互斥二进制变量 $u_{i,t}^{\mathrm{ch}}$ 与支路二阶锥约束，属于混合整数二阶锥规划（MISOCP），调用 MOSEK 或 Gurobi 求解。若使用 CVX 随附的 MOSEK，请仅将 |cvx/mosek| 子文件夹加入 MATLAB 路径（|addpath(genpath('.../cvx/mosek'))|），切勿运行 |cvx_setup| 或添加 |cvx| 根目录。
+% 本模型同时包含充放电互斥二进制变量 $u_{i,t}^{\mathrm{ch}}$ 与支路二阶锥约束，属于混合整数二阶锥规划（MISOCP），需调用 
+% MOSEK 或 Gurobi 求解。若使用 CVX 随附的 MOSEK，请仅将 |cvx/mosek| 子文件夹加入 MATLAB 路径（|addpath(genpath('.../cvx/mosek'))|），切勿运行 
+% |cvx_setup| 或添加 |cvx| 根目录。
+
 Total_Loss_MWh    = Sbase * sum(sum(P_loss_br));
 Total_Curtail_MWh = Sbase * sum(sum(P_pv_max_pu - P_pv));
 Total_Cost_Yuan   = sum((Sbase * P_grid') .* price_MWh);
 
+% 【TODO 3】根据本人学号映射的 model_type ('A' / 'B' / 'C') 选择目标函数：
 if strcmp(model_type, 'A')
     Objective = Total_Curtail_MWh + 1e-2 * Total_Loss_MWh;
 elseif strcmp(model_type, 'B')
@@ -181,50 +185,74 @@ else
     Objective = Total_Cost_Yuan;
 end
 
-if exist('mosekopt', 'file') ~= 0
-    solver_name = 'mosek';
-    ops = sdpsettings('solver', 'mosek', 'verbose', 1);
-    ops.mosek.MSK_DPAR_MIO_MAX_TIME          = 120;
-    ops.mosek.MSK_DPAR_MIO_TOL_REL_GAP       = 1e-6;
-    ops.mosek.MSK_DPAR_MIO_TOL_ABS_GAP       = 1e-8;
-    ops.mosek.MSK_DPAR_MIO_TOL_FEAS          = 1e-9;
-    ops.mosek.MSK_DPAR_MIO_TOL_ABS_RELAX_INT = 1e-9;
-    ops.mosek.MSK_DPAR_INTPNT_CO_TOL_PFEAS   = 1e-10;
-    ops.mosek.MSK_DPAR_INTPNT_CO_TOL_DFEAS   = 1e-10;
-    ops.mosek.MSK_DPAR_INTPNT_CO_TOL_REL_GAP = 1e-10;
-elseif exist('gurobi', 'file') ~= 0
-    solver_name = 'gurobi';
-    ops = sdpsettings('solver', 'gurobi', 'verbose', 1);
-    ops.gurobi.TimeLimit      = 120;
-    ops.gurobi.MIPGap         = 1e-6;
-    ops.gurobi.FeasibilityTol = 1e-9;
-    ops.gurobi.IntFeasTol     = 1e-9;
-    ops.gurobi.OptimalityTol  = 1e-8;
-    ops.gurobi.BarQCPConvTol  = 1e-9;
-else
-    error(['未检测到支持 MISOCP 的求解器 (MOSEK 或 Gurobi)。', ...
-           '请将独立安装的 MOSEK 或 CVX 下的 cvx/mosek 子目录加入路径：addpath(genpath(''.../cvx/mosek''))']);
+solver_candidates={};
+if exist('mosekopt','file')~=0,solver_candidates{end+1}='mosek';end
+if exist('gurobi','file')~=0,solver_candidates{end+1}='gurobi';end
+assert(~isempty(solver_candidates),...
+    '本任务含充放电二进制变量和二阶锥约束，需配置 MOSEK 或 Gurobi。');
+messages=cell(0,1);solver_succeeded=false;tic;
+for k=1:numel(solver_candidates)
+    solver_name=solver_candidates{k};
+    ops=sdpsettings('solver',solver_name,'verbose',1,'savesolveroutput',1);
+    % 由本函数捕获原始异常，既保留错误原因，也继续尝试下一个求解器。
+    ops.debug=1;
+    if strcmp(solver_name,'mosek')
+        ops.mosek.MSK_DPAR_MIO_MAX_TIME=600;
+        ops.mosek.MSK_DPAR_MIO_TOL_REL_GAP=1e-6;
+        ops.mosek.MSK_DPAR_MIO_TOL_ABS_GAP=1e-8;
+        ops.mosek.MSK_DPAR_MIO_TOL_FEAS=1e-9;
+        ops.mosek.MSK_DPAR_MIO_TOL_ABS_RELAX_INT=1e-9;
+        ops.mosek.MSK_DPAR_INTPNT_CO_TOL_PFEAS=1e-10;
+        ops.mosek.MSK_DPAR_INTPNT_CO_TOL_DFEAS=1e-10;
+        ops.mosek.MSK_DPAR_INTPNT_CO_TOL_REL_GAP=1e-10;
+    else
+        % 旧版 YALMIP 默认值为 -1，新版 Gurobi 要求非负。
+        ops.gurobi.TuneTimeLimit=0;
+        ops.gurobi.TimeLimit=120;
+        ops.gurobi.MIPGap=1e-6;
+        ops.gurobi.FeasibilityTol=1e-9;
+        ops.gurobi.IntFeasTol=1e-9;
+        ops.gurobi.OptimalityTol=1e-8;
+        ops.gurobi.BarQCPConvTol=1e-9;
+    end
+    try
+        sol=optimize(Constraints,Objective,ops);
+    catch solver_error
+        messages{end+1}=sprintf('%s [%s]: %s',solver_name,...
+            solver_error.identifier,solver_error.message); %#ok<AGROW>
+        continue
+    end
+    if sol.problem==0,solve_seconds=toc;solver_succeeded=true;break;end
+    detail=sol.info;
+    if isfield(sol,'solveroutput') && ~isempty(sol.solveroutput)
+        % MOSEK 的 rcode/rmsg/rcodestr 及终止状态保留在原始输出中。
+        detail=sprintf('%s\n原始求解器输出：\n%s',detail,evalc('disp(sol.solveroutput)'));
+        if strcmp(solver_name,'mosek') && isfield(sol.solveroutput,'res')
+            raw=sol.solveroutput.res;
+            detail=sprintf('%s\nMOSEK 返回信息：\n%s',detail,evalc('disp(raw)'));
+            if isfield(raw,'sol') && isfield(raw.sol,'int')
+                integer_solution=raw.sol.int;
+                if isfield(integer_solution,'prosta')
+                    detail=sprintf('%s\n整数问题状态：%s',detail,integer_solution.prosta);
+                end
+                if isfield(integer_solution,'solsta')
+                    detail=sprintf('%s\n整数解状态：%s',detail,integer_solution.solsta);
+                end
+            end
+            if isfield(raw,'rcode') && raw.rcode==100001
+                detail=sprintf('%s\nMOSEK 已达到本次设置的 %g 秒时间上限。',...
+                    detail,ops.mosek.MSK_DPAR_MIO_MAX_TIME);
+            end
+        end
+    end
+    messages{end+1}=[solver_name ': ' detail]; %#ok<AGROW>
 end
-sol = optimize(Constraints, Objective, ops);
-if sol.problem ~= 0 && strcmp(solver_name, 'mosek') && exist('gurobi', 'file') ~= 0
-    solver_name = 'gurobi';
-    ops = sdpsettings('solver', 'gurobi', 'verbose', 1);
-    ops.gurobi.TimeLimit      = 120;
-    ops.gurobi.MIPGap         = 1e-6;
-    ops.gurobi.FeasibilityTol = 1e-9;
-    ops.gurobi.IntFeasTol     = 1e-9;
-    ops.gurobi.OptimalityTol  = 1e-8;
-    ops.gurobi.BarQCPConvTol  = 1e-9;
-    sol = optimize(Constraints, Objective, ops);
+if ~solver_succeeded
+    error('MISOCP 求解失败：%s',strjoin(messages,'; '));
 end
-if sol.problem ~= 0
-    error('MISOCP 求解失败 (%s): %s', solver_name, sol.info);
-end
-
 %% 7. 二阶锥松弛精确性分析、交流潮流回代与《中国电机工程学报》规范绘图
-% 定义二阶锥松弛最大间隙 $\Delta_{\mathrm{SOCP}}$ 为：
-% 
-% $$\Delta_{\mathrm{SOCP}} = \max_{(i,j)\in\Omega_{\mathrm{L}}, t\in\mathcal{T}} \left| L_{ij,t} U_{i,t} - \left( P_{ij,t}^2 + Q_{ij,t}^2 \right) \right|$$
+% 请注意图片字体与符号规范：中文采用宋体，西文与数字采用 Times New Roman，变量符号采用斜体，单位与下标说明采用正体。
+
 socp_gap     = max(max(abs(value(L_br) .* value(U_bus(fbus, :)) - (value(P_br).^2 + value(Q_br).^2))));
 simul_err_MW = max(max(min(value(P_ch), value(P_dis)))) * Sbase;
 
@@ -266,7 +294,6 @@ colors       = [0.00, 0.45, 0.74; 0.85, 0.33, 0.10; 0.47, 0.67, 0.19];
 fig1 = figure('Name', '配电网储能日前SOCP调度结果', 'Color', 'w', 'Position', [120, 100, 720, 500]);
 if isprop(fig1, 'Theme'), theme(fig1, 'light'); end
 
-% 子图 (a)：各节点储能净放电有功功率
 subplot(2, 1, 1);
 hold on;
 for k = 1:N_ess
@@ -288,7 +315,6 @@ leg1 = legend(leg_str_a, 'Location', 'north', 'Orientation', 'horizontal', 'Font
 set(leg1, 'Color', 'w', 'TextColor', 'k', 'EdgeColor', 'k');
 grid on;
 
-% 子图 (b)：各节点储能荷电状态 SoC 变化轨迹
 subplot(2, 1, 2);
 hold on;
 for k = 1:N_ess
