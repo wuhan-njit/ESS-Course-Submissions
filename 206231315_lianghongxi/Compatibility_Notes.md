@@ -55,7 +55,16 @@
 
 1. 将四个辅助函数与三个任务的 `.mlx`、`.m` 文件保留在同一目录中。
 2. 配置 MATPOWER、YALMIP、Gurobi 及课程算例路径。
-3. 打开相应实时脚本，点击“全部运行”。
+3. 任务一、二、三分别打开 `lianghongxi_206231315_Week1_Task1.mlx`、
+   `lianghongxi_206231315_Week1_Task2.mlx`、
+   `lianghongxi_206231315_Week1_Task3.mlx`，点击“全部运行”。
+4. 按课程提交目录示例另提供标准命名的 `lianghongxi_206231315_Week1.mlx` 与同名 `.m`。
+   这一对文件对应任务三的储能日前调度，保留相同的 A/B/C 模型与计算结果；
+   主图按示例导出为 `Fig_Week1_Dispatch_206231315.png`、`.pdf`、`.fig`。
+   `Dispatch` 与 `Task3` 主图为同一结果，分别对应通用目录示例与第一周补充通知中的名称。
+
+图形均随作业提供白底 600 dpi PNG、矢量 PDF 和可编辑 FIG 三种格式。
+结果数据已体现在报告中，单独的 MAT、CSV、JSON 结果文件按本人提交范围只保留在本地。
 
 ## 五、版本依据
 
