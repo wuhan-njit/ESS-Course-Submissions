@@ -174,7 +174,9 @@ for k=1:numel(objective_letters)
 end
 yline(1.05,'--','电压上限');xlabel('时间 / h');ylabel('全网最高交流电压 / p.u.');legend('A','B','C','Location','northoutside','Orientation','horizontal');
 sgtitle('三类调度目标比较：C 为松弛不精确教学反例','FontName','PingFang SC');
+fig_standard=ess_task3_figure(Day3);
 if export_figures
+    ess_live_export(fig_standard,script_dir,'Fig_Week1_Task3_206221322');
     ess_live_export(fig_dispatch_storage,script_dir,'Fig_Week1_Task3_Storage_206221322');
     ess_live_export(fig_gap,script_dir,'Fig_Week1_Task3_ConeGap_206221322');
     ess_live_export(fig_dispatch_voltage,script_dir,'Fig_Week1_Task3_Voltage_206221322');

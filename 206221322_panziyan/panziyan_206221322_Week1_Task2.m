@@ -117,6 +117,10 @@ end
 if export_figures
     ess_live_export(fig_arbitrage, script_dir, sprintf('Fig_Week1_Task2_Arbitrage_%d', Stu_ID));
     ess_live_export(fig_sensitivity, script_dir, sprintf('Fig_Week1_Task2_Sensitivity_%d', Stu_ID));
+    for figure_format = {'png', 'pdf', 'fig'}
+        copyfile(fullfile(script_dir, sprintf('Fig_Week1_Task2_Arbitrage_%d.%s', Stu_ID, figure_format{1})), ...
+            fullfile(script_dir, sprintf('Fig_Week1_Task2_%d.%s', Stu_ID, figure_format{1})));
+    end
 end
 Lesson_Stats = struct('Lesson', 2, 'Revenue_Yuan', MILP.Revenue_Yuan, ...
     'LP_MILP_Difference', abs(LP.Revenue_Yuan-MILP.Revenue_Yuan));
